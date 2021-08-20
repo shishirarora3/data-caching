@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import ReactJson from 'react-json-view'
+
 // Msal imports
 import { MsalAuthenticationTemplate, useMsal } from "@azure/msal-react";
 import { InteractionStatus, InteractionType, InteractionRequiredAuthError } from "@azure/msal-browser";
@@ -8,10 +7,24 @@ import { loginRequest } from "../authConfig";
 import { Loading } from "../ui-components/Loading";
 import { ErrorComponent } from "../ui-components/ErrorComponent";
 import { fetchMails } from "../utils/MsGraphApiCall";
-import {useCache} from "../hooks/useCache";
+import {Cache, useCache} from "../hooks/useCache";
 
-
-const Mail = ({mail}) =>{
+const fetchMailID = async (id) =>{
+    return {};
+}
+const Mail = ({id}) =>{
+    const {instance, inProgress} = useMsal();
+    const [mail] = useCache(["mails", id], fetchMailID, {
+        enable: inProgress === InteractionStatus.None,
+        initialData: ()=>{
+            const mails = Cache.get(["mails"]);
+            return mails[id];
+        },
+        onSuccess: (mail)=>{
+            const entry = Cache.get(["mails"]);
+            entry.data[mail.id] = mail;
+        }
+    });
     return (<div style={{
         margin: "1rem",
         padding: "1rem",
@@ -22,7 +35,7 @@ const Mail = ({mail}) =>{
             <div style={{fontWeight: "bold", color: "black"}}>{mail?.subject}</div>
         </div>
         <div>
-            {mail?.bodyPreview}
+            {mail?.body?.content || mail?.bodyPreview}
         </div>
 
     </div>);
@@ -34,7 +47,7 @@ function useFetch(cacheKey, fetcher) {
     const [graphData] = useCache(cacheKey, fetcher, {
         enable:inProgress === InteractionStatus.None,
         onError: (error)=>{
-            if (e instanceof InteractionRequiredAuthError) {
+            if (error instanceof InteractionRequiredAuthError) {
                 instance.acquireTokenRedirect({
                     ...loginRequest,
                     account: instance.getActiveAccount()
@@ -49,7 +62,7 @@ function useFetch(cacheKey, fetcher) {
 }
 
 const MailList = () => {
-    const [graphData, setGraphData] = useFetch(["mails"], fetchMails);
+    const [graphData] = useFetch(["mails"], fetchMails);
 
     return (
         <div style={{display: "flex", flexBasis: "100%"}}>
