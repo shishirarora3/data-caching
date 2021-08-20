@@ -1,7 +1,7 @@
 import { loginRequest, graphConfig } from "../authConfig";
 import { msalInstance } from "../index";
 
-export async function callMsGraph() {
+export async function fetchMails() {
     const account = msalInstance.getActiveAccount();
     if (!account) {
         throw Error("No active account! Verify a user has been signed in and setActiveAccount has been called.");

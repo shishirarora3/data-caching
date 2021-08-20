@@ -9,7 +9,7 @@ import { loginRequest } from "../authConfig";
 import { ProfileData } from "../ui-components/ProfileData";
 import { Loading } from "../ui-components/Loading";
 import { ErrorComponent } from "../ui-components/ErrorComponent";
-import { callMsGraph } from "../utils/MsGraphApiCall";
+import { fetchMails } from "../utils/MsGraphApiCall";
 
 // Material-ui imports
 import Paper from "@material-ui/core/Paper";
@@ -33,7 +33,7 @@ class ProfileContent extends Component {
 
     componentDidMount() {
         if (!this.state.graphData && this.context.inProgress === InteractionStatus.None) {
-            callMsGraph().then(response => this.setState({graphData: response})).catch((e) => {
+            fetchMails().then(response => this.setState({graphData: response})).catch((e) => {
                 if (e instanceof InteractionRequiredAuthError) {
                     this.context.instance.acquireTokenRedirect({
                         ...loginRequest,

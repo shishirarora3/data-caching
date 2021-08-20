@@ -7,7 +7,7 @@ import { loginRequest } from "../authConfig";
 
 import { Loading } from "../ui-components/Loading";
 import { ErrorComponent } from "../ui-components/ErrorComponent";
-import { callMsGraph } from "../utils/MsGraphApiCall";
+import { fetchMails } from "../utils/MsGraphApiCall";
 
 
 const Mail = ({mail}) =>{
@@ -27,13 +27,23 @@ const Mail = ({mail}) =>{
     </div>);
 }
 
-const MailList = () => {
-    const { instance, inProgress } = useMsal();
-    const [graphData, setGraphData] = useState(null);
+const Cache = {
 
+};
+//can be accessed from outside not attached to React
+function useFetch(cacheKey, fetcher) {
+    const {instance, inProgress} = useMsal();
+    const [graphData, setGraphData] = useState(null);
+    Cache[cacheKey] = [
+        graphData,
+        fetcher
+    ];
     useEffect(() => {
         if (!graphData && inProgress === InteractionStatus.None) {
-            callMsGraph().then(response => setGraphData(response)).catch((e) => {
+            fetcher().then(response => {
+                Cache[cacheKey] = [response, fetcher];
+                setGraphData(response);
+            }).catch((e) => {
                 if (e instanceof InteractionRequiredAuthError) {
                     instance.acquireTokenRedirect({
                         ...loginRequest,
@@ -42,7 +52,14 @@ const MailList = () => {
                 }
             });
         }
-    }, [inProgress, graphData, instance]);
+    }, [inProgress, graphData, instance, fetcher, cacheKey]);
+    // 1. cache slices being observed
+    // 2. still tied to rendering
+    return [Cache[cacheKey], setGraphData];
+}
+
+const MailList = () => {
+    const [graphData, setGraphData] = useFetch(["mails"], fetchMails);
 
     return (
         <div style={{display: "flex", flexBasis: "100%"}}>
