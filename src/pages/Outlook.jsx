@@ -6,7 +6,7 @@ import { loginRequest } from "../authConfig";
 
 import { Loading } from "../ui-components/Loading";
 import { ErrorComponent } from "../ui-components/ErrorComponent";
-import { fetchMails } from "../utils/MsGraphApiCall";
+import {fetchMail, fetchMails} from "../utils/MsGraphApiCall";
 import {Cache, useCache} from "../hooks/useCache";
 
 const fetchMailID = async (id) =>{
@@ -14,14 +14,15 @@ const fetchMailID = async (id) =>{
 }
 const Mail = ({id}) =>{
     const {instance, inProgress} = useMsal();
-    const [mail] = useCache(["mails", id], fetchMailID, {
+
+    const [mail] = useCache(["mails", id], fetchMail(id), {
         enable: inProgress === InteractionStatus.None,
         initialData: ()=>{
-            const mails = Cache.get(["mails"]);
-            return mails[id];
+            const mails = Cache.get(JSON.stringify(["mails"]));
+            return mails?.data?.value?.find(mail=> mail.id === id);
         },
         onSuccess: (mail)=>{
-            const entry = Cache.get(["mails"]);
+            const entry = Cache.get(JSON.stringify(["mails"]));
             entry.data[mail.id] = mail;
         }
     });
@@ -53,6 +54,9 @@ function useFetch(cacheKey, fetcher) {
                     account: instance.getActiveAccount()
                 });
             }
+        },
+        onSuccess: (data) =>{
+
         }
     });
 
@@ -63,7 +67,6 @@ function useFetch(cacheKey, fetcher) {
 
 const MailList = () => {
     const [graphData] = useFetch(["mails"], fetchMails);
-
     return (
         <div style={{display: "flex", flexBasis: "100%"}}>
             { graphData ? <div style={{
@@ -73,7 +76,7 @@ const MailList = () => {
                 color: 'white'
             }}>
                 {graphData?.value.map((mail)=>{
-                    return <Mail key={mail.id} mail={mail}/>
+                    return <Mail key={mail.id} id={mail.id}/>
                 })}
             </div> : null }
         </div>

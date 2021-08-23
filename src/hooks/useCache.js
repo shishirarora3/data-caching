@@ -7,10 +7,10 @@ import {useEffect, useState} from "react";
 export const Cache = new Map();
 const observers = {}; //reactive state observers [key]->[observer]
 
-export const setData = (key, newData, observeKeys) =>{ //key can be ["mails", id]
-    const oldCacheEntry = Cache.get[JSON.stringify(key)]; //serialized key
+export const setData = (seriralizedKey, newData, observeKeys) =>{ //key can be ["mails", id]
+    const oldCacheEntry = Cache.get(seriralizedKey); //serialized key
     const nextData = oldCacheEntry.data = newData; //structural sharing
-    observers[key].forEach((observer) => {
+    observers[seriralizedKey].forEach((observer) => {
         observer(nextData);
     });
 }
@@ -28,29 +28,34 @@ export const useCache = (
     key, fetcher,//cached part
     {enable, onError, observeKeys, onSuccess, initialData} //non cached part
 ) =>{
-    const setState = useState(initialData)[1]; //listener component
-
+    const setState = useState(initialData?.())[1]; //listener component
     const seriralizedKey = JSON.stringify(key);
     //can observe only interested keys
-    Cache[key] = Cache.get(seriralizedKey) || {
-        fetcher,
-        data: initialData
-    };
+    const oldEntry = Cache.get(seriralizedKey);
+    if(!oldEntry ){
+        Cache.set(seriralizedKey, {
+            fetcher,
+            data: initialData
+        });
+    }
+    if(!observers[seriralizedKey]){
+        observers[seriralizedKey] = [];
+    }
     let observersOfKey =observers[seriralizedKey];
-    observersOfKey.push(setState);
+    observersOfKey?.push(setState);
 
     useEffect(()=>{
-        enable && Cache[key].fetcher().then(
+        enable && Cache.get(seriralizedKey)?.fetcher()?.then(
             (response)=>{
-                setData(key, response, observeKeys);
+                setData(seriralizedKey, response, observeKeys);
                 onSuccess(response);
             }).catch(onError);
-    }, [key, enable, onError, observeKeys, onSuccess]);
+    }, [key, enable, onError, observeKeys, onSuccess, seriralizedKey]);
     useEffect(()=> {
-        observers[seriralizedKey] = observersOfKey.filter(listener=>listener !== setState)
+        observers[seriralizedKey] = observersOfKey?.filter(listener=>listener !== setState)
     }, [observersOfKey, seriralizedKey, setState]);
     return [
-        Cache[key]?.data,
-        Cache[key]?.fetcher
+        Cache.get(seriralizedKey)?.data,
+        Cache.get(seriralizedKey)?.fetcher
     ];
 }
